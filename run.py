@@ -14,10 +14,8 @@ app = create_app()
 @app.cli.command("seed")
 @click.option('--with-admin', is_flag=True, help='Create an admin user.')
 def seed(with_admin):
-    """
-    Gieo mầm dữ liệu ban đầu cho database: tạo roles và tài khoản admin (tùy chọn).
-    """
-    # --- 1. TẠO ROLES ---
+   
+    # --- TẠO ROLES ---
     roles_to_create = {
         'admin': 'Administrator with all permissions',
         'user': 'Regular user with limited permissions',
@@ -36,7 +34,7 @@ def seed(with_admin):
     else:
         click.echo('Tất cả các role mặc định đã tồn tại.')
 
-    # --- 2. TẠO ADMIN (NẾU CÓ CỜ --with-admin) ---
+    # --- TẠO ADMIN (NẾU CÓ CỜ --with-admin) ---
     if with_admin:
         click.echo('Đang tiến hành tạo tài khoản admin...')
         admin_username = os.getenv('ADMIN_USERNAME')

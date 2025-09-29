@@ -76,4 +76,19 @@ def delete_user(user_id):
 def get_all_users (page , per_page):
     users = User.query.paginate(page=page, per_page=per_page)
     return  UserSchema().dump(users, many=True)
-   
+
+def update_password(user_id, data):
+    user = get_user_by_id(user_id)
+    if not user:
+        return "Không tìm thấy người dùng"
+    if not data or not data.get('password_old') or not data.get('password_new'):
+        return "Thiếu thông tin mật khẩu cũ hoặc mật khẩu mới"
+    password_old = data.get('password_old')
+    password_new = data.get('password_new')
+    if not user.check_password(password=password_old):
+        return "Mật khẩu cũ không đúng"
+
+    user.set_password(password_new)
+    db.session.commit()
+    
+    return None 

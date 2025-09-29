@@ -2,7 +2,7 @@ from flask import Blueprint
 from ..utils.response import success_response, error_response
 from flask import request
 from .auth_controller import Role_required
-from ..services.users_service import model_register, get_all_users,update_user_profile, delete_user
+from ..services.users_service import model_register, get_all_users,update_user_profile, delete_user , get_user_by_id, update_password
 from ..schemas.users_schemas import UserSchema
 from flask_jwt_extended import jwt_required
 users_bp = Blueprint('users', __name__)
@@ -49,6 +49,23 @@ def controller_delete_user(user_id):
     if error:
         return error_response(error, 400)
     return success_response(user, code=200)
+
+@users_bp.route('/<string:user_id>', methods=['GET'])
+@jwt_required()
+def get_user(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        return error_response("Không tìm thấy người dùng", 404)
+    return success_response(UserSchema().dump(user), code=200)
+
+@users_bp.route('/password/<string:user_id>', methods=['POST'])
+@jwt_required()
+def update_password_user(user_id):
+    data = request.get_json()
+    error = update_password(user_id, data)
+    if error:
+        return error_response(error, 400)
+    return success_response("Đổi mật khẩu người dùng thành công", code=200)
 
 
    
