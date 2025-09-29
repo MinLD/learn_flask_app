@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from ..models.models_model import User, TokenBlocklist
 from ..utils.response import success_response, error_response
 from flask_jwt_extended import jwt_required, get_jwt
 from functools import wraps

@@ -2,8 +2,9 @@ from flask import Blueprint
 from ..utils.response import success_response, error_response
 from flask import request
 from .auth_controller import Role_required
-from ..services.users_service import model_register, get_all_users
-
+from ..services.users_service import model_register, get_all_users,update_user_profile, delete_user
+from ..schemas.users_schemas import UserSchema
+from flask_jwt_extended import jwt_required
 users_bp = Blueprint('users', __name__)
 
 @users_bp.route('/', methods=['GET'])
@@ -26,18 +27,28 @@ def register():
         status_code = 409 if "tồn tại" in error else 400
         return error_response(error, status_code)
 
-    user_data = {
-        'id': user.id,
-        'username': user.username,
-        'email': user.email,
-        'avatar': user.avatar if user.avatar else None,
-        'is_active': user.is_active ,
-        'created_at': user.created_at
-    }
+    user_data = UserSchema().dump(user)
     
     return success_response(user_data, code=201)
 
+@users_bp.route('/<string:user_id>', methods=['POST'])
+@jwt_required()
+def update_user(user_id):
+    data = request.get_json()
+    updated_user, error = update_user_profile(data, user_id)
 
+    if error:
+        return error_response(error, 400)
+    
+    return success_response(UserSchema().dump(updated_user), code=200)
+
+@users_bp.route('/<string:user_id>', methods=['DELETE'])
+@Role_required(role='admin')
+def controller_delete_user(user_id):
+    user, error = delete_user(user_id)
+    if error:
+        return error_response(error, 400)
+    return success_response(user, code=200)
 
 
    

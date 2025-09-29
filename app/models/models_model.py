@@ -23,15 +23,15 @@ class User(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    points = db.Column(db.Integer, nullable=False, default=0)
     is_active = db.Column(db.Boolean(), nullable=False, default=True)
     created_at = db.Column(db.DateTime(), nullable=False, default=db.func.now())
     updated_at = db.Column(db.DateTime(), nullable=False, default=db.func.now(), onupdate=db.func.now())
-    points = db.Column(db.Integer, nullable=False, default=0)
 
-    roles = db.relationship('Role', secondary=user_roles_table, backref=db.backref('users', lazy='dynamic'))
     profile = db.relationship('UserProfile', back_populates='user', uselist=False, cascade="all, delete-orphan")
     organization = db.relationship('Organization', back_populates='owner', uselist=False, cascade="all, delete-orphan")
+    roles = db.relationship('Role', secondary=user_roles_table, backref=db.backref('users', lazy='dynamic'))
+
    
     
        
@@ -43,6 +43,7 @@ class User(db.Model):
 class UserProfile(db.Model):
     __tablename__ = 'user_profile'
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    email = db.Column(db.String(255), nullable=True)
     avatar = db.Column(db.String(255), nullable=True)
     fullname = db.Column(db.String(255), nullable=True)
     bio = db.Column(db.String(255), nullable=True)
