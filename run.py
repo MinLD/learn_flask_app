@@ -4,7 +4,9 @@ from app import create_app
 import os
 import click
 from app.extensions import db
-from app.models.auth_model import Role,User
+from app.models.models_model import Role,User
+from app.services.role_service import get_role_by_name
+from app.services.users_service import get_user_by_username, model_register
 app = create_app()
 
 
@@ -18,7 +20,8 @@ def seed(with_admin):
     # --- 1. TẠO ROLES ---
     roles_to_create = {
         'admin': 'Administrator with all permissions',
-        'user': 'Regular user with limited permissions'
+        'user': 'Regular user with limited permissions',
+        'organization_owner': 'Owner of an organization',
     }
     roles_created_count = 0
     for role_name, role_desc in roles_to_create.items():
@@ -44,7 +47,7 @@ def seed(with_admin):
             click.echo('Lỗi: Cần thiết lập ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD trong file .env.')
             return
 
-        if User.get_user_by_username(admin_username):
+        if get_user_by_username(admin_username):
             click.echo(f'Tài khoản admin "{admin_username}" đã tồn tại.')
             return
 
@@ -52,7 +55,7 @@ def seed(with_admin):
             admin_user = User(username=admin_username, email=admin_email)
             admin_user.set_password(admin_password)
             
-            admin_role = Role.get_role_by_name('admin')
+            admin_role = get_role_by_name('admin')
             if admin_role:
                 admin_user.roles.append(admin_role)
             

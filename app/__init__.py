@@ -1,8 +1,12 @@
 # app/__init__.py
 
 from flask import Flask , jsonify
+
+from .models import models_model
 from .extensions import db, migrate, jwt
 from config import config
+from .models.models_model import User, TokenBlocklist
+
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -17,6 +21,18 @@ def create_app(config_name='default'):
     app.register_blueprint(auth_bp, url_prefix='/auth')
     from .controller.users_controller import users_bp
     app.register_blueprint(users_bp, url_prefix='/users')
+
+    # check_if_token_in_blocklist
+    @jwt.token_in_blocklist_loader
+    def check_if_token_in_blocklist(jwt_header, jwt_data):
+        jti = jwt_data["jti"]
+        return TokenBlocklist.query.filter_by(jti=jti).first() is not None
+
+    #load user
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        return User.query.get(identity)
 
     #additional clams
 
@@ -45,5 +61,6 @@ def create_app(config_name='default'):
         }), 401
 
     
-    from .models import auth_model, users_model 
+    from .models import models_model
+    from .services import users_service, auth_service, role_service
     return app
