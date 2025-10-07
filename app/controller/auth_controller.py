@@ -10,6 +10,7 @@ def Role_required(role='admin'):
         @jwt_required()  
         def decorator(*args, **kwargs):
             claims = get_jwt()
+            print(claims)
             if role in claims.get("roles", []):
                 return fn(*args, **kwargs)
             else:

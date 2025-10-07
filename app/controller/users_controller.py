@@ -31,11 +31,15 @@ def register():
     
     return success_response(user_data, code=201)
 
-@users_bp.route('/<string:user_id>', methods=['POST'])
+@users_bp.route('/<string:user_id>', methods=['PATCH'])
 @jwt_required()
 def update_user(user_id):
-    data = request.get_json()
+    data = request.form.to_dict()
+    if 'avatar' in request.files:
+        data['avatar'] = request.files['avatar']
     updated_user, error = update_user_profile(data, user_id)
+
+
 
     if error:
         return error_response(error, 400)
@@ -58,7 +62,7 @@ def get_user(user_id):
         return error_response("Không tìm thấy người dùng", 404)
     return success_response(UserSchema().dump(user), code=200)
 
-@users_bp.route('/password/<string:user_id>', methods=['POST'])
+@users_bp.route('/password/<string:user_id>', methods=['PATCH'])
 @jwt_required()
 def update_password_user(user_id):
     data = request.get_json()

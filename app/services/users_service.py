@@ -3,6 +3,7 @@ from ..models.models_model import User, UserProfile
 from ..extensions import db
 from .role_service import get_role_by_name
 from ..schemas.users_schemas import UserSchema
+from ..services.upload_service import upload_file
 
 
 
@@ -11,7 +12,7 @@ def get_user_by_username(username):
 
 def get_user_by_id(user_id):
     return User.query.filter_by(id=user_id).first()
-    
+
 
 def get_email_profile(email):
     return UserProfile.query.filter_by(email=email).first()
@@ -51,20 +52,19 @@ def update_user_profile(data, user_id):
         return None, "Không tìm thấy người dùng"
     if not data:
         return None, "Thiếu thông tin bắt buộc"
-
-    if 'email' in data:
-        user.profile.email = data.get('email')
+    
+    updatable_fields = ['email', 'fullname', 'bio', 'date_of_birth']
+    for field in updatable_fields:
+        if field in data and data[field] is not None:
+            setattr(user.profile, field, data.get(field))
     if 'avatar' in data:
-        user.profile.avatar = data.get('avatar')
-    if 'fullname' in data:
-        user.profile.fullname = data.get('fullname')
-    if 'bio' in data:
-        user.profile.bio = data.get('bio')
-    if 'date_of_birth' in data:
-        user.profile.date_of_birth = data.get('date_of_birth')
+        avatar_media = upload_file(data['avatar'], user_id)
+       
+        print("avt", avatar_media)
+        user.profile.avatar = avatar_media
 
-        db.session.commit()
-        return user, None
+    db.session.commit()
+    return user, None
 
 def delete_user(user_id):
     user = get_user_by_id(user_id)
@@ -73,6 +73,7 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return "Xóa người dùng thành công", None
+
 def get_all_users (page , per_page):
     users = User.query.paginate(page=page, per_page=per_page)
     return  UserSchema().dump(users, many=True)

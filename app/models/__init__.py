@@ -16,3 +16,4 @@
     Đây là định nghĩa ở phía đối diện, chỉ định rằng thuộc tính userprofile.
     user sẽ trỏ ngược lại User thông qua thuộc tính profile đã khai báo ở trên.
 '''
+
