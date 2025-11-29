@@ -42,6 +42,9 @@ def generate_tokens(data):
             return None, None, "Thiếu username hoặc password"
 
         user = get_user_by_username(username=data.get('username'))
+        if not user:
+            return None, None, "Tài khoản không tồn tại"
+
         if user and user.check_password(password=data.get('password')):
             user_roles = [role.name for role in user.roles]
             additional_claims = {"roles": user_roles}

@@ -9,7 +9,6 @@ from app.services.role_service import get_role_by_name
 from app.services.users_service import get_user_by_username, model_register
 app = create_app()
 
-
 # run `flask seed --with-admin` to create an admin user and roles
 @app.cli.command("seed")
 @click.option('--with-admin', is_flag=True, help='Create an admin user.')

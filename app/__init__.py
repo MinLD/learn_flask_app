@@ -2,7 +2,7 @@
 
 from flask import Flask , jsonify
 
-from .extensions import db, migrate, jwt
+from .extensions import db, migrate, jwt, cors
 from config import config
 from .models.models_model import User, TokenBlocklist
 import cloudinary
@@ -13,6 +13,14 @@ def create_app(config_name='default'):
     app.config.from_object(config[config_name])
     app.json.sort_keys = False
     db.init_app(app)
+    cors.init_app(app, 
+                  resources={r"/api/*": {  
+                      "origins": ["http://localhost:3000"],
+                      "supports_credentials": True,
+                      "allow_headers": ["Content-Type", "Authorization"]
+                  }}
+              
+    )
     migrate.init_app(app, db)
     jwt.init_app(app)
     cloudinary.config(
@@ -23,17 +31,19 @@ def create_app(config_name='default'):
 
 
     from .controller.auth_controller import auth_bp
-    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     from .controller.users_controller import users_bp
-    app.register_blueprint(users_bp, url_prefix='/users')
+    app.register_blueprint(users_bp, url_prefix='/api/users')
     from .controller.organization_controller import organization_bp
     app.register_blueprint(organization_bp, url_prefix='/organization')
     from .controller.challenges_controller import challenges_bp
-    app.register_blueprint(challenges_bp, url_prefix='/challenges')
+    app.register_blueprint(challenges_bp, url_prefix='/api/challenges')
     from .controller.upload_controller import upload_bp
     app.register_blueprint(upload_bp, url_prefix='/upload')
     from .controller.organization_events_controller import organization_events_bp
     app.register_blueprint(organization_events_bp, url_prefix='/organization_events')
+    from .controller.category_controller import category_bp
+    app.register_blueprint(category_bp, url_prefix='/api/categories')
     
 
 

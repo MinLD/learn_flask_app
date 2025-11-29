@@ -3,7 +3,7 @@ from ..utils.response import success_response, error_response
 from flask_jwt_extended import jwt_required, get_jwt
 from functools import wraps
 from ..services.auth_service import generate_tokens, whoami, logout, refresh_token
-auth_bp = Blueprint('auth_bp', __name__)
+auth_bp = Blueprint('api/auth', __name__)
 def Role_required(role='admin'):
     def wrapper(fn):
         @wraps(fn)
@@ -41,10 +41,9 @@ def whoami_controller():
 @auth_bp.route('/refresh', methods=['POST']) 
 @jwt_required(refresh=True)
 def refresh():
-    new_access_token, error = refresh_token()
+    new_access_token, error = refresh_token() 
     if error:
         return error_response(error, 401)
-        
     return success_response(data={'access_token': new_access_token}, code=200)
 
 @auth_bp.route('/logout', methods=['POST'])

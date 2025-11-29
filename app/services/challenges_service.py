@@ -1,8 +1,9 @@
 from ..extensions import db
 from .organization_service import user_get_organization_by_id
 from .users_service import get_user_by_id
-from ..models.models_model import Challenge
+from ..models.models_model import Challenge, Category
 from ..services.upload_service import upload_file
+from ..schemas.users_schemas import ChallengeSchema
 
 def get_challenge_by_id(challenge_id):
     return Challenge.query.filter_by(id=challenge_id).first()
@@ -10,6 +11,13 @@ def get_challenge_by_id(challenge_id):
 def create_challenge(data, current_user_id, organization_id=None, user_id=None):
     if not data:
         return None, "Thiếu thông tin bắt buộc"
+
+    category_id = data.get('category_id')
+    if not category_id:
+        return None, "Thiếu id danh mục"
+    category = Category.query.filter_by(id=category_id).first()
+    if not category:
+        return None, "Không tìm thấy danh mục"
 
     creator_user = None
     creator_org = None
@@ -43,6 +51,7 @@ def create_challenge(data, current_user_id, organization_id=None, user_id=None):
         name= name, 
         description=description,
         location=location,
+        category=category
     )
     
     if creator_org:
@@ -52,7 +61,9 @@ def create_challenge(data, current_user_id, organization_id=None, user_id=None):
 
     images_upload = []
     for file in data['images']:
-        media_object = upload_file(file, current_user_id)
+        media_object, error = upload_file(file, current_user_id)
+        if error:
+            return None, error
         images_upload.append(media_object)
     new_challenge.images = images_upload
     
@@ -81,7 +92,20 @@ def reject_challenge(challenge_id):
     return "Từ chối thử thách thành công", None
 
 def get_all_challenges_pending  (page, per_page):
-    return Challenge.query.filter_by(status='pending').paginate(page=page, per_page=per_page)
+    paginator_result = Challenge.query.filter_by(status='pending').paginate(page=page, per_page=per_page)
+    challenges_data = ChallengeSchema().dump(paginator_result.items, many=True)
+    response = {
+        "challenges": challenges_data,
+        "pagination": {
+            "current_page": paginator_result.page,
+            "per_page": paginator_result.per_page,
+            "total_items": paginator_result.total,
+            "total_pages": paginator_result.pages,
+            "has_next": paginator_result.has_next,
+            "has_prev": paginator_result.has_prev
+        }
+    }
+    return response
    
 
 

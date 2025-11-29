@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt
 from ..schemas.users_schemas import ChallengeSchema
 from ..controller.auth_controller import Role_required
 
-challenges_bp = Blueprint('challenges', __name__)
+challenges_bp = Blueprint('api/challenges', __name__)
 @challenges_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_challenge_controller():
@@ -59,4 +59,4 @@ def controller_reject_challenge(challenge_id):
 def get_all_challenges_pending_controller():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    return success_response(data=ChallengeSchema().dump(get_all_challenges_pending(page, per_page), many=True), code=200)
+    return success_response(get_all_challenges_pending(page, per_page), code=200)

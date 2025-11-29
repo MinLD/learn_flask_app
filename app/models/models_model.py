@@ -45,6 +45,13 @@ class User(db.Model):
     # (One-to-many): giữa User và Challenge.
     challenges = db.relationship('Challenge', back_populates='user', lazy='dynamic')
 
+    uploads = db.relationship(
+        'Media',
+        backref='uploader',          # Bên Media sẽ có biến .uploader
+        cascade="all, delete-orphan", # Xóa User -> Xóa sạch ảnh do nó upload
+        lazy='dynamic',
+        foreign_keys='Media.uploaded_by_user_id' # Chỉ định rõ khóa ngoại
+    )
 
 
    
@@ -56,22 +63,27 @@ class User(db.Model):
     def check_password(self, password): 
         return check_password_hash(self.password, password)
 class UserProfile(db.Model):
-    __tablename__ = 'user_profile'
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
-    email = db.Column(db.String(255), nullable=True)
-    fullname = db.Column(db.String(255), nullable=True)
-    bio = db.Column(db.String(255), nullable=True)
-    date_of_birth = db.Column(db.DateTime(), nullable=True)
-    created_at = db.Column(db.DateTime(), nullable=False, default=db.func.now())
-    updated_at = db.Column(db.DateTime(), nullable=False, default=db.func.now(), onupdate=db.func.now())
+        __tablename__ = 'user_profile'
+        id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+        email = db.Column(db.String(255), nullable=True)
+        fullname = db.Column(db.String(255), nullable=True)
+        bio = db.Column(db.String(255), nullable=True)
+        date_of_birth = db.Column(db.DateTime(), nullable=True)
+        created_at = db.Column(db.DateTime(), nullable=False, default=db.func.now())
+        updated_at = db.Column(db.DateTime(), nullable=False, default=db.func.now(), onupdate=db.func.now())
 
-    # (One-to-one): Giữa User và UserProfile.
-    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, unique=True)
-    user = db.relationship('User', back_populates='profile')
+        # (One-to-one): Giữa User và UserProfile.
+        user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False, unique=True)
+        user = db.relationship('User', back_populates='profile')
 
-    # (One-to-one): giữa UserProfile và media
-    avatar_id = db.Column(db.Integer, db.ForeignKey('media.id'), nullable=True)
-    avatar = db.relationship('Media', back_populates='profile_avatar')
+        # (One-to-one): giữa UserProfile và media
+        avatar_id = db.Column(db.Integer, db.ForeignKey('media.id'), nullable=True)
+        avatar = db.relationship(
+            'Media',
+            back_populates='profile_avatar',
+            uselist=False, cascade="all, delete-orphan",
+            lazy='joined',
+            single_parent=True)
 
 
 
@@ -140,6 +152,9 @@ class Challenge (db.Model):
 
     # (One-to-Many): Giữa Challenge và Organized_Events.
     organized_events = db.relationship('Organized_Events', back_populates='challenge', lazy='dynamic')
+    # (one to many): giữa challenge và categories_challenges
+    category = db.relationship('Category', back_populates='challenges')
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
 
 class Media(db.Model):
     __tablename__ = 'media'
@@ -148,10 +163,11 @@ class Media(db.Model):
     secure_url = db.Column(db.String(255), nullable=False)
     resource_type = db.Column(db.String(50), nullable=False, default='image')
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    
     uploaded_by_user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
 
     # (One-to-one): Giữa User và Media.
-    profile_avatar = db.relationship('UserProfile', back_populates='avatar', foreign_keys=[UserProfile.avatar_id])
+    profile_avatar = db.relationship('UserProfile', back_populates='avatar', foreign_keys='UserProfile.avatar_id' )
 
     # (One-to-one): Giữa User và Media.
     organization_logo = db.relationship('Organization', back_populates='logo_url', foreign_keys=[Organization.logo_id])
@@ -159,6 +175,11 @@ class Media(db.Model):
     # (One-to-Many): Giữa Challenge và Media.
     challenge = db.relationship('Challenge', back_populates='images')
     challenge_id = db.Column(db.Integer, db.ForeignKey('challenges.id'), nullable=True)
+
+    # (one-to-one): giữa media và categories_challenges
+    category = db.relationship('Category', back_populates='image', foreign_keys='Category.image_id')
+
+
 
 class Organized_Events(db.Model): 
     __tablename__ = 'organized_events'
@@ -179,6 +200,24 @@ class Organized_Events(db.Model):
 
     # (Many-to-Many): Giữa User và Organized_Events.
     participants = db.relationship('User', secondary=event_participants_table, backref=db.backref('organized_events', lazy='dynamic'))
+
+class Category(db.Model):
+    __tablename__ = 'categories'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now())
+
+    # (one-to_many) giữ categories_challenges và ảnh
+    image = db.relationship('Media', back_populates='category')
+    image_id = db.Column(db.Integer, db.ForeignKey('media.id'), nullable=True)
+
+    # (one-to_many) giữa categories_challenges và challenge
+    challenges = db.relationship('Challenge', back_populates='category',lazy='dynamic')
+
+
+
 
 
 

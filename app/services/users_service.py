@@ -4,8 +4,10 @@ from ..extensions import db
 from .role_service import get_role_by_name
 from ..schemas.users_schemas import UserSchema
 from ..services.upload_service import upload_file
+from sqlalchemy import or_
 
-
+import re
+USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9]+$")
 
 def get_user_by_username(username):
     return User.query.filter_by(username=username).first()
@@ -24,14 +26,52 @@ def save(data):
 def delete(data):
     db.session.delete(data)
     db.session.commit()
+def model_search_user(data, page, per_page):
+    search_query = data.get('keyword')
+    if not search_query:
+        return None, "Thiếu thông tin bắt buộc"
+    search_pattern = f"%{search_query}%"
+    try:
+        paginated_result = User.query.join(UserProfile).filter(
+            or_(
+                User.username.ilike(search_pattern),
+                UserProfile.email.ilike(search_pattern),
+                UserProfile.fullname.ilike(search_pattern)
+            )
+        ).paginate(page=page, per_page=per_page, error_out=False)
+        user_data = UserSchema().dump(paginated_result.items, many=True)
+        response_data = {
+            "users": user_data,
+            "pagination": {
+                "current_page": paginated_result.page,
+                "per_page": paginated_result.per_page,
+                "total_items": paginated_result.total,
+                "total_pages": paginated_result.pages,
+                "has_next": paginated_result.has_next,
+                "has_prev": paginated_result.has_prev
+            }
+        }
+        return response_data, None
+    
+    except Exception as e:
+        db.session.rollback() 
+        return None, f"Lỗi: {e}"
+   
 
-def model_register(data ):
+
+
+def model_register(data):
         username = data.get('username')
         password = data.get('password')
         email = data.get('email')
         role = get_role_by_name(name='user')
         if not username or not password or not email:
             return None, "Thiếu thông tin bắt buộc hoặc thông tin rỗng (username, password, email)"
+        username = username.strip()
+        if " " in username:
+            return None, "Username không có khoảng trắng" 
+        if not USERNAME_REGEX.match(username):
+            return None, "Username chỉ được chứa chữ cái (a-z), và số (0-9)"
         if get_user_by_username(username):
             return None, "Tên đăng nhập đã tồn tại"
         if get_email_profile(email):
@@ -39,6 +79,36 @@ def model_register(data ):
         
         new_profile = UserProfile(email=email, avatar=None, fullname=None, bio=None, date_of_birth=None)
         new_user = User(username=username,roles=[role], profile=new_profile)
+   
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        return new_user, None
+
+def model_admin_register(data ):
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email')
+        role = data.get('role').lower()
+        fullname = data.get('fullname')
+        points = data.get('points')
+
+        roles = get_role_by_name(name=role)
+        if not username or not password or not email:
+            return None, "Thiếu thông tin bắt buộc hoặc thông tin rỗng (username, password, email)"
+        username = username.strip()
+        if " " in username:
+            return None, "Username không có khoảng trắng" 
+        if not USERNAME_REGEX.match(username):
+            return None, "Username chỉ được chứa chữ cái (a-z), và số (0-9)"
+        if get_user_by_username(username):
+            return None, "Tên đăng nhập đã tồn tại"
+        if get_email_profile(email):
+            return None, "Email đã tồn tại"
+        
+        new_profile = UserProfile(email=email, avatar=None, fullname=fullname, bio=None, date_of_birth=None)
+        new_user = User(username=username,roles=[roles], profile=new_profile, points=points)
    
         new_user.set_password(password)
         
@@ -57,10 +127,22 @@ def update_user_profile(data, user_id):
     for field in updatable_fields:
         if field in data and data[field] is not None:
             setattr(user.profile, field, data.get(field))
+    if 'username' in data and data['username'] is not None:
+        user.username = data['username']
+    if 'points' in data and data['points'] is not None:
+        user.points = data['points']
+    if 'role' in data and data['role'] is not None:
+        role = get_role_by_name(name=data['role'].lower())
+        if not role:
+            return None, "Không tìm thấy role"
+        user.roles = [role]
+
     if 'avatar' in data:
-        avatar_media = upload_file(data['avatar'], user_id)
+        avatar_media, error = upload_file(data['avatar'], user_id)
+        if error:
+            return None, error
+   
        
-        print("avt", avatar_media)
         user.profile.avatar = avatar_media
 
     db.session.commit()
@@ -75,8 +157,19 @@ def delete_user(user_id):
     return "Xóa người dùng thành công", None
 
 def get_all_users (page , per_page):
-    users = User.query.paginate(page=page, per_page=per_page)
-    return  UserSchema().dump(users, many=True)
+    paginated_result = User.query.paginate(page=page, per_page=per_page)
+    users_data = UserSchema().dump(paginated_result, many=True)
+    return {
+        "users": users_data,
+        "pagination": {
+            "current_page": paginated_result.page,
+            "per_page": paginated_result.per_page,
+            "total_items": paginated_result.total,
+            "total_pages": paginated_result.pages,
+            "has_next": paginated_result.has_next,
+            "has_prev": paginated_result.has_prev
+        }
+    }
 
 def update_password(user_id, data):
     user = get_user_by_id(user_id)
