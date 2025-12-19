@@ -1,10 +1,10 @@
 from flask import Blueprint, request
-from ..utils.response import success_response, error_response
+from ..utils.response import success_response, error_response,paginated_response
 from flask_jwt_extended import jwt_required, get_jwt
 from ..schemas.users_schemas import CategorySchema, ChallengeSchema
 from ..controller.auth_controller import Role_required
 from marshmallow import ValidationError
-from ..services.category_service import modal_create_category, modal_update_category, modal_get_all_categories
+from ..services.category_service import modal_search_categories,modal_create_category, modal_update_category, modal_get_all_categories, modal_delete_category
 from ..models.models_model import Challenge, Category
 category_bp = Blueprint('api/categories', __name__)
 @category_bp.route('/', methods=['POST'], strict_slashes=False)
@@ -56,3 +56,22 @@ def controller_get_all_categories():
     if error:
         return error_response(str(error), 500)
     return success_response(data=categories, code=200)
+
+@category_bp.route('/<int:category_id>', methods=['DELETE'])
+@jwt_required()
+@Role_required(role='admin')
+def controller_delete_category(category_id):
+    message, error = modal_delete_category(category_id)
+    if error:
+        return error_response(str(error), 500)
+    return success_response(data={"message": message}, code=200)
+
+@category_bp.route('/search', methods=['GET'])
+def controller_search_categories():
+    keyword = request.args.get('keyword', type=str)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    response_data, error = modal_search_categories({'keyword': keyword}, page, per_page)
+    if error:
+        return error_response(str(error), 500)
+    return success_response(data=response_data, code=200)

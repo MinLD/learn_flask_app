@@ -1,3 +1,4 @@
+from operator import or_
 from ..models.models_model import Category
 from ..services.upload_service import upload_file
 from ..extensions import db
@@ -49,3 +50,32 @@ def modal_get_all_categories(page, per_page):
         return paginated_response(category_data, paginated_result), None
     except Exception as e:
         return None, str(e)
+    
+def modal_delete_category(category_id):
+    category = get_category_by_id(category_id=category_id)
+    if not category:
+        return None, "Không tìm thấy danh mục"
+    try:
+        db.session.delete(category)
+        db.session.commit()
+        return "Xóa danh mục thành công", None
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
+
+def modal_search_categories(data, page, per_page):
+        search_query = data.get('keyword')
+        if not search_query:
+            return None, "Thiếu từ khóa tìm kiếm"
+        search_pattern = f"%{search_query}%"
+        try: 
+            paginated_result = Category.query.filter(
+            or_(
+                Category.name.ilike(search_pattern),
+                Category.description.ilike(search_pattern)
+            )).paginate(page=page, per_page=per_page, error_out=False)
+            category_data = CategorySchema().dump(paginated_result.items, many=True)
+            return paginated_response(category_data, paginated_result), None
+        except Exception as e:
+            db.session.rollback()
+            return None, str(e)

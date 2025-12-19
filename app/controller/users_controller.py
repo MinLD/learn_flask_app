@@ -2,11 +2,19 @@ from flask import Blueprint
 from ..utils.response import success_response, error_response
 from flask import request
 from .auth_controller import Role_required
-from ..services.users_service import model_search_user,model_register, get_all_users,update_user_profile, delete_user , get_user_by_id, update_password, model_admin_register
+from ..services.users_service import model_get_user_stats,model_search_user,model_register, get_all_users,update_user_profile, delete_user , get_user_by_id, update_password, model_admin_register
 from ..schemas.users_schemas import UserSchema
 from flask_jwt_extended import jwt_required
 users_bp = Blueprint('api/users', __name__)
 
+@users_bp.route('/stats', methods=['GET'])
+@Role_required(role='admin')
+@jwt_required()
+def get_user_stats():
+    response_data, error = model_get_user_stats()
+    if error:
+        return error_response(error, 500)
+    return success_response(response_data, code=200)
 
 @users_bp.route('/search', methods=['GET'])
 def search_user():

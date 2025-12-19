@@ -4,7 +4,7 @@ from ..extensions import db
 from .role_service import get_role_by_name
 from ..schemas.users_schemas import UserSchema
 from ..services.upload_service import upload_file
-from sqlalchemy import or_
+from sqlalchemy import  or_
 
 import re
 USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9]+$")
@@ -186,3 +186,56 @@ def update_password(user_id, data):
     db.session.commit()
     
     return None 
+
+def model_get_user_stats():
+    from sqlalchemy import func, extract, and_
+    from datetime import datetime, date
+    try:
+        # 1. Tổng số user
+        total_users = User.query.count()
+
+        # 2. Số user đang hoạt động (is_active=True)
+        active_users = User.query.filter_by(is_active=True).count()
+
+        # 3. Số user mới đăng ký trong HÔM NAY
+        today = date.today()
+        new_users_today = User.query.filter(
+            func.date(User.created_at) == today
+        ).count()
+
+        # 4. Dữ liệu vẽ biểu đồ: Số user đăng ký theo từng tháng trong năm nay
+        current_year = datetime.now().year
+        
+        # Query: Chọn Tháng, Đếm số User -> Group By Tháng
+        monthly_stats = db.session.query(
+            extract('month', User.created_at).label('month'),
+            func.count(User.id).label('count')
+        ).filter(
+            extract('year', User.created_at) == current_year
+        ).group_by(
+            extract('month', User.created_at)
+        ).order_by('month').all()
+
+        # Chuyển đổi dữ liệu query thành list dictionary để trả về JSON
+        # Khởi tạo mảng 12 tháng với giá trị 0
+        chart_data = [{"month": i, "users": 0} for i in range(1, 13)]
+        
+        # Gán dữ liệu thật vào
+        for stat in monthly_stats:
+            # stat.month là float hoặc int tùy database, ép kiểu cho chắc
+            month_index = int(stat.month) - 1 
+            chart_data[month_index]["users"] = stat.count
+
+        return ({
+            "summary": {
+                "total": total_users,
+                "active": active_users,
+                "inactive": total_users - active_users,
+                "new_today": new_users_today
+            },
+            "chart_data": chart_data
+        }), None
+
+    except Exception as e:
+        print(e)
+        return None, f"Lỗi: {e}"
